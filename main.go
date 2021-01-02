@@ -5,6 +5,7 @@ import (
 
 	"encoding/binary"
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -18,6 +19,11 @@ var path string
 var skipCheckOrigin bool
 var connectTcpAuthority string
 var sendConnectionInfoOnconnectTelnet bool
+var listenPort int
+
+var usingTLS bool
+var tlsKeyFile string
+var tlsCertFile string
 
 func main() {
 
@@ -26,6 +32,12 @@ func main() {
 	flag.StringVar(&connectTcpAuthority, "authority", "localhost:8080", "TCP authority (dafault: localhost:8080)")
 	flag.BoolVar(&sendConnectionInfoOnconnectTelnet, "send-source-ip-port",
 		false, "Send PTT format source ip port information (default: false)")
+
+	flag.IntVar(&listenPort, "listen-port", 8899, "listen port (default: 8899)")
+
+	flag.BoolVar(&usingTLS, "using-tls", false, "using tls (dafault: false)")
+	flag.StringVar(&tlsKeyFile, "tls-key-file", "./key.pem", "tls key file (dafault: ./key.pem)")
+	flag.StringVar(&tlsCertFile, "tls-cert-file", "./cert.pem", "tls cert file (dafault: ./cert.pem)")
 
 	flag.Parse()
 
@@ -97,8 +109,13 @@ func main() {
 
 		}
 	})
-	log.Println("server start at :8899")
-	log.Fatal(http.ListenAndServe(":8899", nil))
+	listenString := fmt.Sprintf(":%d", listenPort)
+	log.Println("server start at ", listenString, "with tls:", usingTLS)
+	if usingTLS {
+		log.Fatal(http.ListenAndServeTLS(listenString, tlsCertFile, tlsKeyFile, nil))
+	} else {
+		log.Fatal(http.ListenAndServe(listenString, nil))
+	}
 }
 
 func dialTelnet(url string) (net.Conn, error) {
