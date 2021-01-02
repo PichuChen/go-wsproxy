@@ -226,7 +226,7 @@ func getPttIPConnectionData(ipPortString string, localPort uint16, flag uint32) 
 		// IPv4
 		binary.LittleEndian.PutUint32(ret[8:12], 4) // length of ip, 4 bytes for ipv4, 16 for ipv6
 		ip := net.ParseIP(ipString)
-		copy(ret[12:12+4], ip)
+		copy(ret[12:12+4], ip[12:])
 	}
 	port, _ := strconv.Atoi(portString)
 	binary.LittleEndian.PutUint16(ret[28:30], uint16(port)) // rport: remote port
