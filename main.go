@@ -102,6 +102,10 @@ func main() {
 				n, err := telnetConnect.Read(buf)
 				if err != nil {
 					log.Println("read ptt:", err)
+					if err.Error() == "EOF" {
+						c.Close()
+						return
+					}
 					break
 				}
 				mtype := websocket.BinaryMessage
@@ -113,7 +117,11 @@ func main() {
 		for {
 			mtype, msg, err := c.ReadMessage()
 			if err != nil {
-				log.Println("read:", err)
+				log.Println("read from websocket error:", err)
+				if err.Error() == "EOF" {
+					telnetConnect.Close()
+					return
+				}
 				break
 			}
 			log.Printf("receive from socket: %v %d\n", mtype, len(msg))
