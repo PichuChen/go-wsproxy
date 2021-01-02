@@ -107,7 +107,7 @@ func main() {
 				}
 				mtype := websocket.BinaryMessage
 				// log.Printf("receive local: %v %s\n", mtype, buf[:n])
-				err := c.WriteMessage(mtype, buf[:n])
+				err = c.WriteMessage(mtype, buf[:n])
 				if err != nil {
 					log.Println("write websocket error:", err)
 
