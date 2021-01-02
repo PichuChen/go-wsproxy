@@ -18,19 +18,21 @@ import (
 var path string
 var skipCheckOrigin bool
 var connectTcpAuthority string
-var sendConnectionInfoOnconnectTelnet bool
+var sendConnectionDataoOnConnectTelnet bool
 var listenPort int
 
 var usingTLS bool
 var tlsKeyFile string
 var tlsCertFile string
 
+var forwardHeaderSecretKey string
+
 func main() {
 
 	flag.StringVar(&path, "path", "/bbs", "websocket default path (dafault: /bbs)")
 	flag.BoolVar(&skipCheckOrigin, "skip-check-origin", true, "Skip Check Origin (dafault: true)")
 	flag.StringVar(&connectTcpAuthority, "authority", "localhost:23", "TCP authority (dafault: localhost:23)")
-	flag.BoolVar(&sendConnectionInfoOnconnectTelnet, "send-source-ip-port",
+	flag.BoolVar(&sendConnectionDataoOnConnectTelnet, "send-connection-data",
 		false, "Send PTT format source ip port information (default: false)")
 
 	flag.IntVar(&listenPort, "listen-port", 8899, "listen port (default: 8899)")
@@ -38,6 +40,9 @@ func main() {
 	flag.BoolVar(&usingTLS, "using-tls", false, "using tls (dafault: false)")
 	flag.StringVar(&tlsKeyFile, "tls-key-file", "./key.pem", "tls key file (dafault: ./key.pem)")
 	flag.StringVar(&tlsCertFile, "tls-cert-file", "./cert.pem", "tls cert file (dafault: ./cert.pem)")
+
+	flag.StringVar(&forwardHeaderSecretKey, "forward-header-secret-key", "",
+		"if set this key, proxy will override remote addr by matched forward for and scheme setting (dafault: )")
 
 	flag.Parse()
 
@@ -73,6 +78,21 @@ func main() {
 			log.Println("disconnect !!")
 			c.Close()
 		}()
+
+		if sendConnectionDataoOnConnectTelnet {
+			var data []byte
+			if forwardHeaderSecretKey != "" {
+				data = getConnectionDataFromForwardedHeader(r)
+			} else {
+				secure := uint32(1)
+				if !usingTLS {
+					secure = 0
+				}
+				getPttIPConnectionData(r.RemoteAddr, uint16(listenPort), secure)
+			}
+			telnetConnect.Write(data)
+
+		}
 
 		go func() {
 			for {
@@ -123,7 +143,12 @@ func main() {
 }
 
 func dialTelnet(url string) (net.Conn, error) {
-	conn, err := net.Dial("tcp", url)
+	protocol := "tcp"
+	if strings.HasPrefix(url, "unix:") {
+		protocol = "unix"
+		url = url[5:] // cut unix:
+	}
+	conn, err := net.Dial(protocol, url)
 	if err != nil {
 		log.Fatal("dialTelnet:", err)
 		return nil, err
@@ -132,13 +157,61 @@ func dialTelnet(url string) (net.Conn, error) {
 	return conn, err
 }
 
-func getPttIPConnectionData(ipPort net.Addr, localPort uint16, flag uint32) []byte {
+func getConnectionDataFromForwardedHeader(r *http.Request) []byte {
+	remoteAddr := r.RemoteAddr
+	forwarded := r.Header.Get("Forwarded")
+	secure := uint32(1)
+	if !usingTLS {
+		secure = 0
+	}
+	if forwarded == "" {
+		return getPttIPConnectionData(remoteAddr, uint16(listenPort), secure)
+	}
+
+	forwardedList := strings.Split(forwarded, ",")
+	for _, item := range forwardedList {
+		item = strings.Replace(item, " ", "", -1)
+		segs := strings.Split(item, ";")
+		hFor := ""
+		hSecret := ""
+		hScheme := ""
+		for _, seg := range segs {
+			switch {
+			case strings.HasPrefix(seg, "for="):
+				hFor = seg[4:]
+			case strings.HasPrefix(seg, "secret="):
+				hSecret = seg[7:]
+			case strings.HasPrefix(seg, "scheme="):
+				hScheme = seg[7:]
+			}
+		}
+		if hSecret == forwardHeaderSecretKey {
+			log.Println("replace ", remoteAddr, "with", hFor, "scheme", hScheme)
+			if hFor[0] == '"' {
+				// IPv6
+				remoteAddr = hFor[1 : len(hFor)-1]
+			} else {
+				remoteAddr = hFor
+			}
+			if hScheme == "https" {
+				secure = 1
+			} else {
+				secure = 0
+			}
+			break
+		}
+	}
+	return getPttIPConnectionData(remoteAddr, uint16(listenPort), secure)
+
+}
+
+func getPttIPConnectionData(ipPortString string, localPort uint16, flag uint32) []byte {
 	// < u4 u4 u4 s16 u2 u2 u4
 	// Little-Endiend
 	var ret = make([]byte, 36)
 	binary.LittleEndian.PutUint32(ret[0:4], 36) // size
 	binary.LittleEndian.PutUint32(ret[4:8], 0)  // encoding
-	ipPortString := ipPort.String()
+	// ipPortString := ipPort
 	commonIndex := strings.LastIndex(ipPortString, ";")
 	ipString := ipPortString[:commonIndex]
 	portString := ipPortString[commonIndex+1:]
