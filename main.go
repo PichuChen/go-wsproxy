@@ -61,6 +61,7 @@ func main() {
 	http.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		c, err := upgrader.Upgrade(w, r, nil)
 		log.Println("connect from", r.RemoteAddr)
+		log.Println("header", r.header)
 		if err != nil {
 			log.Println("upgrade:", err)
 			return
@@ -212,7 +213,7 @@ func getPttIPConnectionData(ipPortString string, localPort uint16, flag uint32) 
 	binary.LittleEndian.PutUint32(ret[0:4], 36) // size
 	binary.LittleEndian.PutUint32(ret[4:8], 0)  // encoding
 	// ipPortString := ipPort
-	commonIndex := strings.LastIndex(ipPortString, ";")
+	commonIndex := strings.LastIndex(ipPortString, ":")
 	ipString := ipPortString[:commonIndex]
 	portString := ipPortString[commonIndex+1:]
 	if ipString[0] == '[' {
