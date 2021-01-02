@@ -101,16 +101,17 @@ func main() {
 				var buf []byte = make([]byte, 1024)
 				n, err := telnetConnect.Read(buf)
 				if err != nil {
-					log.Println("read ptt:", err)
-					if err.Error() == "EOF" {
-						c.Close()
-						return
-					}
+					log.Println("read socket:", err)
+					c.Close()
 					break
 				}
 				mtype := websocket.BinaryMessage
 				// log.Printf("receive local: %v %s\n", mtype, buf[:n])
-				c.WriteMessage(mtype, buf[:n])
+				err := c.WriteMessage(mtype, buf[:n])
+				if err != nil {
+					log.Println("write websocket error:", err)
+
+				}
 			}
 		}()
 
@@ -130,7 +131,8 @@ func main() {
 				// mtype = 2
 				n, err := telnetConnect.Write(msg)
 				if err != nil {
-					log.Println("write:", err)
+					log.Println("write socket:", err)
+					c.Close()
 					break
 				}
 				if n != len(msg) {
