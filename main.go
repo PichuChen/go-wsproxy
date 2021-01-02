@@ -29,7 +29,7 @@ func main() {
 
 	flag.StringVar(&path, "path", "/bbs", "websocket default path (dafault: /bbs)")
 	flag.BoolVar(&skipCheckOrigin, "skip-check-origin", true, "Skip Check Origin (dafault: true)")
-	flag.StringVar(&connectTcpAuthority, "authority", "localhost:8080", "TCP authority (dafault: localhost:8080)")
+	flag.StringVar(&connectTcpAuthority, "authority", "localhost:23", "TCP authority (dafault: localhost:23)")
 	flag.BoolVar(&sendConnectionInfoOnconnectTelnet, "send-source-ip-port",
 		false, "Send PTT format source ip port information (default: false)")
 
@@ -42,6 +42,10 @@ func main() {
 	flag.Parse()
 
 	log.Println("connect to:", connectTcpAuthority)
+	if usingTLS {
+		log.Println("cert file:", tlsCertFile)
+		log.Println("key file:", tlsKeyFile)
+	}
 
 	upgrader := &websocket.Upgrader{}
 
