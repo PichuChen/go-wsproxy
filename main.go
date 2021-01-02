@@ -89,8 +89,9 @@ func main() {
 				if !usingTLS {
 					secure = 0
 				}
-				getPttIPConnectionData(r.RemoteAddr, uint16(listenPort), secure)
+				data = getPttIPConnectionData(r.RemoteAddr, uint16(listenPort), secure)
 			}
+			log.Println("write connection data:", data)
 			telnetConnect.Write(data)
 
 		}
@@ -115,11 +116,10 @@ func main() {
 				log.Println("read:", err)
 				break
 			}
-			// log.Printf("receive ptt: %v %s\n", mtype, msg)
+			log.Printf("receive from socket: %v %d\n", mtype, len(msg))
 			switch mtype {
 			case websocket.BinaryMessage:
 				// mtype = 2
-
 				n, err := telnetConnect.Write(msg)
 				if err != nil {
 					log.Println("write:", err)
@@ -129,6 +129,7 @@ func main() {
 					log.Println("warn, n != len(msg) n:", n, "len(msg)", len(msg))
 				}
 			default:
+				log.Println("unhandled message", mtype, "msg:", msg)
 				// not handle
 			}
 
@@ -175,26 +176,26 @@ func getConnectionDataFromForwardedHeader(r *http.Request) []byte {
 		segs := strings.Split(item, ";")
 		hFor := ""
 		hSecret := ""
-		hScheme := ""
+		hProto := ""
 		for _, seg := range segs {
 			switch {
 			case strings.HasPrefix(seg, "for="):
 				hFor = seg[4:]
 			case strings.HasPrefix(seg, "secret="):
 				hSecret = seg[7:]
-			case strings.HasPrefix(seg, "scheme="):
-				hScheme = seg[7:]
+			case strings.HasPrefix(seg, "proto="):
+				hProto = seg[6:]
 			}
 		}
 		if hSecret == forwardHeaderSecretKey {
-			log.Println("replace ", remoteAddr, "with", hFor, "scheme", hScheme)
+			log.Println("replace ", remoteAddr, "with", hFor, "scheme", hProto)
 			if hFor[0] == '"' {
 				// IPv6
 				remoteAddr = hFor[1 : len(hFor)-1]
 			} else {
 				remoteAddr = hFor
 			}
-			if hScheme == "https" {
+			if hProto == "https" {
 				secure = 1
 			} else {
 				secure = 0
