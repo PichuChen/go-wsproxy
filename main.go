@@ -61,7 +61,7 @@ func main() {
 	http.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		c, err := upgrader.Upgrade(w, r, nil)
 		log.Println("connect from", r.RemoteAddr)
-		log.Println("header", r.header)
+		log.Println("header", r.Header)
 		if err != nil {
 			log.Println("upgrade:", err)
 			return
