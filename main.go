@@ -125,13 +125,13 @@ func main() {
 				}
 				break
 			}
-			log.Printf("receive from socket: %v %d\n", mtype, len(msg))
+			// log.Printf("receive from socket: %v %d\n", mtype, len(msg))
 			switch mtype {
 			case websocket.BinaryMessage:
 				// mtype = 2
 				n, err := telnetConnect.Write(msg)
 				if err != nil {
-					log.Println("write socket:", err)
+					log.Println("write socket err:", err)
 					c.Close()
 					break
 				}
