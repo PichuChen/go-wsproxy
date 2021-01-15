@@ -148,9 +148,9 @@ func main() {
 	listenString := fmt.Sprintf(":%d", listenPort)
 	log.Println("server start at ", listenString, "with tls:", usingTLS)
 	if usingTLS {
-		log.Fatal(http.ListenAndServeTLS(listenString, tlsCertFile, tlsKeyFile, nil))
+		log.Println(http.ListenAndServeTLS(listenString, tlsCertFile, tlsKeyFile, nil))
 	} else {
-		log.Fatal(http.ListenAndServe(listenString, nil))
+		log.Println(http.ListenAndServe(listenString, nil))
 	}
 }
 
@@ -162,7 +162,7 @@ func dialTelnet(url string) (net.Conn, error) {
 	}
 	conn, err := net.Dial(protocol, url)
 	if err != nil {
-		log.Fatal("dialTelnet:", err)
+		log.Println("dialTelnet:", err)
 		return nil, err
 		// handle error
 	}
@@ -252,7 +252,7 @@ func dialPttWs() (*websocket.Conn, error) {
 	header.Set("origin", "https://term.ptt.cc")
 	c, _, err := websocket.DefaultDialer.Dial("wss://ws.ptt.cc/bbs", header)
 	if err != nil {
-		log.Fatal("dial:", err)
+		log.Println("dial:", err)
 		return nil, err
 	}
 	return c, nil
